@@ -48,7 +48,7 @@ if [ "$SWARM_STATUS" == "active" ]; then
     ok "Swarm is already active."
 else
     info "Swarm is not active. Initializing..."
-    docker swarm init > /dev/null 2>&1 \
+    docker swarm init --advertise-addr "$(hostname -I | awk '{print $1}')" > /dev/null 2>&1 \
         || fail "Failed to initialize Docker Swarm!"
     ok "Swarm initialized successfully."
 fi
