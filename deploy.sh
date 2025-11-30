@@ -10,7 +10,7 @@ echo "██╔██╗ ██║██║   ██║██║  ██║█�
 echo "██║╚██╗██║██║   ██║██║  ██║██╔══╝  ╚════██║██╔══╝  ██║╚██╗██║╚════██║██╔══╝"
 echo "██║ ╚████║╚██████╔╝██████╔╝███████╗███████║███████╗██║ ╚████║███████║███████╗"
 echo "╚═╝  ╚═══╝ ╚═════╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝╚══════╝╚══════╝"
-echo "============================================================================="
+echo "=============================================================================="
 echo "                           N O D E   M O N I T O R I N G   P L A T F O R M"
 echo ""
 
@@ -23,6 +23,8 @@ fail() { err "$1"; exit 1; }
 STACK_NAME="monitor-platform"
 STACK_FILE="stack.yml"
 NETWORKS=("frontend_net" "backend_net" "monitoring_net")
+REALM_TEMPLATE="keycloak/import/NodeSense-realm.template.json"
+REALM_SCRIPT="keycloak/generate-realm-json.sh"
 
 # =============== CHECK DOCKER =================
 info "Checking if Docker is running..."
@@ -32,7 +34,6 @@ ok "Docker is running."
 # =============== CHECK SWARM ==================
 info "Checking Docker Swarm status..."
 SWARM=$(docker info --format '{{.Swarm.LocalNodeState}}')
-
 [ "$SWARM" != "active" ] && fail "Docker Swarm is not active. Run setup.sh first."
 ok "Swarm is active."
 
@@ -47,6 +48,60 @@ done
 info "Checking if $STACK_FILE exists..."
 [ ! -f "$STACK_FILE" ] && fail "$STACK_FILE not found!"
 ok "$STACK_FILE found."
+
+# =============== CHECK TEMPLATE & SCRIPT =============
+info "Checking Keycloak realm template..."
+[ ! -f "$REALM_TEMPLATE" ] && fail "Realm template missing: $REALM_TEMPLATE"
+ok "Template OK."
+
+info "Checking realm generation script..."
+[ ! -x "$REALM_SCRIPT" ] && fail "Realm generator missing or not executable: $REALM_SCRIPT"
+ok "Generator OK."
+
+# =============== ASK FOR PASSWORDS & CLIENT SECRET =================
+echo ""
+echo "-------------------------------------------------------------"
+echo "                 Keycloak Authentication Setup"
+echo "-------------------------------------------------------------"
+
+# --- Admin password ---
+while true; do
+    read -s -p "Admin password: " ADMIN_PASS
+    echo ""
+    read -s -p "Confirm admin password: " ADMIN_PASS2
+    echo ""
+    [ "$ADMIN_PASS" = "$ADMIN_PASS2" ] && [ -n "$ADMIN_PASS" ] && break
+    echo "Passwords do not match or are empty. Try again."
+done
+
+# --- Viewer password ---
+while true; do
+    read -s -p "Viewer password: " VIEWER_PASS
+    echo ""
+    read -s -p "Confirm viewer password: " VIEWER_PASS2
+    echo ""
+    [ "$VIEWER_PASS" = "$VIEWER_PASS2" ] && [ -n "$VIEWER_PASS" ] && break
+    echo "Passwords do not match or are empty. Try again."
+done
+
+# --- Client Secret ---
+while true; do
+    read -s -p "API Gateway client secret: " CLIENT_SECRET
+    echo ""
+    read -s -p "Confirm client secret: " CLIENT_SECRET2
+    echo ""
+    [ "$CLIENT_SECRET" = "$CLIENT_SECRET2" ] && [ -n "$CLIENT_SECRET" ] && break
+    echo "Client secrets do not match or are empty. Try again."
+done
+
+echo ""
+info "Generating private realm JSON..."
+
+"$REALM_SCRIPT" "$ADMIN_PASS" "$VIEWER_PASS" "$CLIENT_SECRET" \
+    || fail "Failed to generate realm JSON."
+
+ok "Realm JSON generated successfully."
+echo ""
 
 # ================== DEPLOY ====================
 info "Deploying stack: $STACK_NAME..."

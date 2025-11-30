@@ -13,7 +13,8 @@
 
 ## NodeSense: Container/VM Monitoring Platform
 
-**NodeSense** is a platform designed for the **continuous monitoring** of **container and VM nodes**. It is based on the core idea that every node in the platform runs an **agent** that collects system metrics (CPU consumption, memory usage, active processes, etc.) and sends this information to a central collection service continuously.
+**NodeSense** is a platform designed for the **continuous monitoring** of **container and VM nodes**.
+It is based on the core idea that every node in the platform runs an **agent** that collects system metrics (CPU consumption, memory usage, active processes, etc.) and sends this information to a central collection service continuously.
 
 This platform is structured as a **Docker Swarm stack** and provides services for data collection, aggregation, visualization, and alerting.
 
@@ -71,3 +72,20 @@ To deploy the NodeSense platform, follow these steps:
     ```bash
     ./cleanup.sh
     ```
+
+### Keycloak Integration (Authentication & Authorization)
+
+The platform utilizes a dedicated **Keycloak** service to handle Single Sign-On (SSO), authentication and authorization.
+The integration is designed to be **fully automated, secure, and reproducible**, eliminating the need for manual configuration via the Keycloak UI.
+
+**Key Implementation Features:**
+
+* **Automated Realm Import:** Keycloak is configured to automatically import the `NodeSense` realm upon startup using the `--import-realm` argument.
+* **Secure Secret Management:**
+    * **Template-Based:** The realm configuration is maintained in a version-controlled template (`keycloak/import/NodeSense-realm.template.json`) which contains **no secrets**.
+    * **Dynamic Generation:** During the deployment process (`deploy.sh`), a helper script (`keycloak/generate-realm-json.sh`) injects the sensitive credentials (admin password, viewer password and API Gateway client secret) provided interactively by the user.
+    * **Result:** This generates a transient `NodeSense-realm.json` file used for the actual import, ensuring that secrets are never committed to the repository.
+* **Predefined Access Control:**
+    * **Users:** Automatically provisions `admin` and `viewer` users.
+    * **Roles:** Assigns specific roles (`admin`, `viewer`) that are embedded in the JWT tokens for downstream service authorization.
+* **Streamlined UX:** The configuration overrides the default user profile to remove the mandatory "Update Account Information" step, ensuring a seamless login flow.

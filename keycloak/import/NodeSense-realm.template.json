@@ -1,0 +1,65 @@
+{
+	"realm": "NodeSense",
+	"enabled": true,
+
+	"attributes": {
+	"userProfileEnabled": true,
+	"kc.user.profile.enabled": "true",
+	"kc.user.profile.config": "{\"attributes\":[], \"groups\":[]}"
+	},
+
+	"requiredActions": [
+	{ "alias": "VERIFY_EMAIL", "enabled": false },
+	{ "alias": "UPDATE_PROFILE", "enabled": false },
+	{ "alias": "UPDATE_PASSWORD", "enabled": false },
+	{ "alias": "TERMS_AND_CONDITIONS", "enabled": false }
+	],
+
+	"users": [
+	{
+		"username": "admin",
+		"enabled": true,
+		"emailVerified": true,
+		"credentials": [
+		{
+			"type": "password",
+			"value": "__ADMIN_PASSWORD__",
+			"temporary": false
+		}
+		],
+		"realmRoles": ["admin"]
+	},
+	{
+		"username": "viewer",
+		"enabled": true,
+		"emailVerified": true,
+		"credentials": [
+		{
+			"type": "password",
+			"value": "__VIEWER_PASSWORD__",
+			"temporary": false
+		}
+		],
+		"realmRoles": ["viewer"]
+	}
+	],
+
+	"roles": {
+	"realm": [
+		{ "name": "admin", "description": "Administrator" },
+		{ "name": "viewer", "description": "Viewer" }
+	]
+	},
+
+	"clients": [
+	{
+		"clientId": "api-gateway",
+		"enabled": true,
+		"protocol": "openid-connect",
+		"publicClient": false,
+		"secret": "__CLIENT_SECRET__",
+		"directAccessGrantsEnabled": true,
+		"standardFlowEnabled": true
+	}
+	]
+}
