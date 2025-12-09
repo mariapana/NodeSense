@@ -112,7 +112,7 @@ docker stack deploy -c "$STACK_FILE" "$STACK_NAME" \
 ok "Stack submitted. Waiting for services to start..."
 
 # =============== VERIFY SERVICES WITH RETRIES ==============
-MAX_RETRIES=30
+MAX_RETRIES=60
 SLEEP_TIME=2
 
 info "Verifying service replicas (timeout: $((MAX_RETRIES * SLEEP_TIME))s)..."

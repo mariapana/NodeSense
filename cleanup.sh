@@ -57,27 +57,53 @@ else
     info "No leftover containers."
 fi
 
-# =============== REMOVE VOLUMES (IMPORTANT) ====================
-info "Searching for volumes related to stack: $STACK_NAME"
+# =============== REMOVE STACK VOLUMES (DYNAMICALLY) ================
+info "Detecting volumes used by stack: $STACK_NAME"
 
-VOLUMES=$(docker volume ls --format '{{.Name}}' | grep "$STACK_NAME" || true)
+# List all services from the stack
+SERVICES=$(docker stack services "$STACK_NAME" --format '{{.Name}}')
 
-if [ -z "$VOLUMES" ]; then
-    info "No volumes found for stack."
+declare -A STACK_VOLUMES
+
+# Extract volumes from each service spec
+for SVC in $SERVICES; do
+    info "Inspecting service: $SVC"
+    
+    MOUNTS=$(docker service inspect "$SVC" --format '{{json .Spec.TaskTemplate.ContainerSpec.Mounts}}')
+
+    if [[ "$MOUNTS" != "null" ]]; then
+        # Extract "Source" fields from JSON
+        VOL_NAMES=$(echo "$MOUNTS" | jq -r '.[] | .Source // empty')
+
+        for VOL in $VOL_NAMES; do
+            STACK_VOLUMES["$VOL"]=1
+        done
+    fi
+done
+
+if [ ${#STACK_VOLUMES[@]} -eq 0 ]; then
+    info "No volumes detected for stack."
 else
-    for VOL in $VOLUMES; do
-        info "Force-removing any container using volume: $VOL"
-        CONTAINERS_USING_VOL=$(docker ps -a --filter volume="$VOL" -q)
+    info "Found ${#STACK_VOLUMES[@]} volume(s) to remove."
 
-        if [ -n "$CONTAINERS_USING_VOL" ]; then
-            docker rm -f $CONTAINERS_USING_VOL > /dev/null 2>&1
-            ok "Removed containers blocking $VOL"
+    for VOL in "${!STACK_VOLUMES[@]}"; do
+        info "Processing volume: $VOL"
+
+        # Stop any container using this volume
+        CONTAINERS_USING=$(docker ps -a --filter volume="$VOL" -q)
+
+        if [ -n "$CONTAINERS_USING" ]; then
+            info "Removing containers using volume $VOL"
+            docker rm -f $CONTAINERS_USING >/dev/null 2>&1 || true
         fi
 
-        info "Removing volume $VOL..."
-        docker volume rm "$VOL" > /dev/null 2>&1 && ok "Removed $VOL" || err "Failed to remove $VOL"
+        info "Removing volume $VOL"
+        docker volume rm "$VOL" >/dev/null 2>&1 \
+            && ok "Removed $VOL" \
+            || info "Volume $VOL was already removed or not found."
     done
 fi
+
 
 # =============== OPTIONAL VOLUME PRUNE =================
 echo -n "Remove ALL unused Docker volumes as well? (y/N): "

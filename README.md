@@ -89,3 +89,21 @@ The integration is designed to be **fully automated, secure, and reproducible**,
     * **Users:** Automatically provisions `admin` and `viewer` users.
     * **Roles:** Assigns specific roles (`admin`, `viewer`) that are embedded in the JWT tokens for downstream service authorization.
 * **Streamlined UX:** The configuration overrides the default user profile to remove the mandatory "Update Account Information" step, ensuring a seamless login flow.
+
+### TimescaleDB Integration (Time-Series Metrics Storage)
+
+NodeSense uses **TimescaleDB** to persist monitoring metrics in an optimized time-series format.
+
+**Design Overview:**
+
+* A dedicated **TimescaleDB** service is deployed as part of the Docker Swarm stack.
+* The database schema is automatically created at startup using SQL initialization scripts.
+* Monitoring data is organized using a normalized model:
+    * `nodes` - represents monitored nodes (VMs or containers)
+    * `metrics` - a time-series hypertable storing metric values over time
+
+**Schema Highlights:**
+
+* The `metrics` table is defined as a **hypertable**, enabling efficient queries over time intervals.
+* Indexes are created for `(node_id, time DESC)` to optimize common access patterns.
+

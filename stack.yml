@@ -1,4 +1,7 @@
 services:
+  # -------------------------
+  # Keycloak (Auth)
+  # -------------------------
   keycloak:
     image: quay.io/keycloak/keycloak:26.0.5
     command:
@@ -13,7 +16,6 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
 
-      # Hostname MUST be explicitly set in production mode
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_HTTPS: "false"
       KC_HTTP_ENABLED: "true"
@@ -41,8 +43,36 @@ services:
     networks:
       - keycloak_net
 
+  # -------------------------
+  # TimescaleDB (Metrics)
+  # -------------------------
+  timescaledb:
+    image: timescale/timescaledb:2.15.1-pg16
+    environment:
+      POSTGRES_USER: nodesense
+      POSTGRES_PASSWORD: nodesensepass
+      POSTGRES_DB: nodesense
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+
+    networks:
+      - monitoring_net
+
+# -------------------------
+# Networks
+# -------------------------
 networks:
   keycloak_net:
+  monitoring_net:
 
+# -------------------------
+# Volumes
+# -------------------------
 volumes:
   pgdata:
+  timescale_data:
