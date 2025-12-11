@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS timescaledb;
 
 -- Table: nodes
 CREATE TABLE IF NOT EXISTS nodes (
-  id UUID PRIMARY KEY,
+  id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   labels JSONB,
   last_seen TIMESTAMPTZ DEFAULT now()
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS nodes (
 -- Table: metrics (time-series)
 CREATE TABLE IF NOT EXISTS metrics (
   time TIMESTAMPTZ NOT NULL,
-  node_id UUID NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+  node_id TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
   metric_name TEXT NOT NULL,
   value DOUBLE PRECISION NOT NULL,
   unit TEXT

@@ -29,6 +29,7 @@ services:
 
     networks:
       - keycloak_net
+      - backend_net
 
   postgres-keycloak:
     image: postgres:16
@@ -53,21 +54,47 @@ services:
       POSTGRES_PASSWORD: nodesensepass
       POSTGRES_DB: nodesense
 
-    ports:
-      - "5432:5432"
-
     volumes:
       - timescale_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
 
     networks:
+      - backend_net
       - monitoring_net
+
+    ports:
+      - "5432:5432"
+
+  # -------------------------
+  # Collector (FastAPI)
+  # -------------------------
+  collector:
+    build: ./collector
+    image: nodesense-collector:latest
+
+    environment:
+      DB_HOST: timescaledb
+      DB_USER: nodesense
+      DB_PASS: nodesensepass
+      DB_NAME: nodesense
+      DB_PORT: 5432
+
+    ports:
+      - "3000:3000"
+
+    networks:
+      - backend_net
+      - monitoring_net
+
+    deploy:
+      replicas: 2
 
 # -------------------------
 # Networks
 # -------------------------
 networks:
   keycloak_net:
+  backend_net:
   monitoring_net:
 
 # -------------------------
