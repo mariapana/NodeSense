@@ -22,9 +22,11 @@ fail() { err "$1"; exit 1; }
 
 STACK_NAME="monitor-platform"
 STACK_FILE="stack.yml"
-NETWORKS=("frontend_net" "backend_net" "monitoring_net")
+NETWORKS=("keycloak_net" "backend_net" "monitoring_net")
 REALM_TEMPLATE="keycloak/import/NodeSense-realm.template.json"
 REALM_SCRIPT="keycloak/generate-realm-json.sh"
+COLLECTOR_IMAGE="nodesense-collector:latest"
+COLLECTOR_DIR="collector"
 
 # =============== CHECK DOCKER =================
 info "Checking if Docker is running..."
@@ -57,6 +59,23 @@ ok "Template OK."
 info "Checking realm generation script..."
 [ ! -x "$REALM_SCRIPT" ] && fail "Realm generator missing or not executable: $REALM_SCRIPT"
 ok "Generator OK."
+
+# =============== CHECK COLLECTOR DIRECTORY ===============
+info "Checking collector directory..."
+[ ! -d "$COLLECTOR_DIR" ] && fail "Collector directory missing: $COLLECTOR_DIR"
+[ ! -f "$COLLECTOR_DIR/Dockerfile" ] && fail "Collector Dockerfile missing!"
+ok "Collector directory OK."
+
+# =============== BUILD COLLECTOR IMAGE (SWARM IGNORES build:) ===============
+info "Building collector image ($COLLECTOR_IMAGE)..."
+docker build -t "$COLLECTOR_IMAGE" "$COLLECTOR_DIR" \
+  || fail "Failed to build collector image"
+ok "Collector image built."
+
+# =============== CHECK COLLECTOR IMAGE EXISTS ===============
+docker image inspect "$COLLECTOR_IMAGE" > /dev/null 2>&1 \
+  || fail "Collector image missing after build."
+ok "Collector image exists."
 
 # =============== ASK FOR PASSWORDS & CLIENT SECRET =================
 echo ""

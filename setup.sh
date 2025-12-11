@@ -54,7 +54,7 @@ else
 fi
 
 ### STEP 2 - Create overlay networks
-NETWORKS=("frontend_net" "backend_net" "monitoring_net")
+NETWORKS=("keycloak_net" "backend_net" "monitoring_net")
 
 for NET in "${NETWORKS[@]}"; do
     info "Checking network $NET..."

@@ -58,52 +58,31 @@ else
 fi
 
 # =============== REMOVE STACK VOLUMES (DYNAMICALLY) ================
-info "Detecting volumes used by stack: $STACK_NAME"
+info "Detecting volumes created by stack: $STACK_NAME"
 
-# List all services from the stack
-SERVICES=$(docker stack services "$STACK_NAME" --format '{{.Name}}')
+# Docker swarm creates volumes with prefix: <stack>_<volumename>
+VOLUMES=$(docker volume ls --format '{{.Name}}' | grep "^${STACK_NAME}_" || true)
 
-declare -A STACK_VOLUMES
-
-# Extract volumes from each service spec
-for SVC in $SERVICES; do
-    info "Inspecting service: $SVC"
-    
-    MOUNTS=$(docker service inspect "$SVC" --format '{{json .Spec.TaskTemplate.ContainerSpec.Mounts}}')
-
-    if [[ "$MOUNTS" != "null" ]]; then
-        # Extract "Source" fields from JSON
-        VOL_NAMES=$(echo "$MOUNTS" | jq -r '.[] | .Source // empty')
-
-        for VOL in $VOL_NAMES; do
-            STACK_VOLUMES["$VOL"]=1
-        done
-    fi
-done
-
-if [ ${#STACK_VOLUMES[@]} -eq 0 ]; then
-    info "No volumes detected for stack."
+if [ -z "$VOLUMES" ]; then
+    info "No volumes found with prefix: ${STACK_NAME}_"
 else
-    info "Found ${#STACK_VOLUMES[@]} volume(s) to remove."
-
-    for VOL in "${!STACK_VOLUMES[@]}"; do
+    for VOL in $VOLUMES; do
         info "Processing volume: $VOL"
 
-        # Stop any container using this volume
+        # Remove containers using the volume
         CONTAINERS_USING=$(docker ps -a --filter volume="$VOL" -q)
 
         if [ -n "$CONTAINERS_USING" ]; then
-            info "Removing containers using volume $VOL"
+            info "Removing containers using $VOL..."
             docker rm -f $CONTAINERS_USING >/dev/null 2>&1 || true
         fi
 
-        info "Removing volume $VOL"
+        info "Removing volume $VOL..."
         docker volume rm "$VOL" >/dev/null 2>&1 \
             && ok "Removed $VOL" \
-            || info "Volume $VOL was already removed or not found."
+            || info "Could not remove $VOL (already deleted or in use)"
     done
 fi
-
 
 # =============== OPTIONAL VOLUME PRUNE =================
 echo -n "Remove ALL unused Docker volumes as well? (y/N): "
