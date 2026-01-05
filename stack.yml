@@ -89,6 +89,21 @@ services:
     deploy:
       replicas: 2
 
+  # -------------------------
+  # Node Agent
+  # -------------------------
+  agent:
+    build: ./agent
+    image: nodesense-agent:latest
+    environment:
+      COLLECTOR_URL: http://collector:3000/ingest
+      NODE_ID: "{{.Node.ID}}"
+      INTERVAL: "5"
+    networks:
+      - monitoring_net
+    deploy:
+      mode: global
+
 # -------------------------
 # Networks
 # -------------------------

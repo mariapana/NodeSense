@@ -72,10 +72,18 @@ docker build -t "$COLLECTOR_IMAGE" "$COLLECTOR_DIR" \
   || fail "Failed to build collector image"
 ok "Collector image built."
 
-# =============== CHECK COLLECTOR IMAGE EXISTS ===============
 docker image inspect "$COLLECTOR_IMAGE" > /dev/null 2>&1 \
   || fail "Collector image missing after build."
 ok "Collector image exists."
+
+# =============== BUILD AGENT IMAGE =================
+AGENT_IMAGE="nodesense-agent:latest"
+AGENT_DIR="agent"
+
+info "Building agent image ($AGENT_IMAGE)..."
+docker build -t "$AGENT_IMAGE" "$AGENT_DIR" \
+  || fail "Failed to build agent image"
+ok "Agent image built."
 
 # =============== ASK FOR PASSWORDS & CLIENT SECRET =================
 echo ""

@@ -24,12 +24,12 @@ def collect_metrics():
         {"name": "cpu_usage", "value": cpu, "unit": "%"},
         {
             "name": "mem_used",
-            "value": human_bytes(mem.used),
+            "value": mem.used,
             "unit": "bytes",
         },
         {
             "name": "mem_total",
-            "value": human_bytes(mem.total),
+            "value": mem.total,
             "unit": "bytes",
         },
         {
@@ -37,16 +37,14 @@ def collect_metrics():
             "value": (load_avg / psutil.cpu_count()) * 100,
             "unit": "%",
         },
+        {
+            "name": "process_count",
+            "value": len(psutil.pids()),
+            "unit": "count",
+        },
     ]
 
     return metrics
-
-
-def human_bytes(num):
-    for unit in ["B", "KB", "MB", "GB", "TB", "PB"]:
-        if num < 1024:
-            return f"{num:.2f} {unit}"
-        num /= 1024
 
 
 # ================= PAYLOAD =================
