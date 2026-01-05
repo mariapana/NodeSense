@@ -85,6 +85,15 @@ docker build -t "$AGENT_IMAGE" "$AGENT_DIR" \
   || fail "Failed to build agent image"
 ok "Agent image built."
 
+# =============== BUILD GATEWAY IMAGE =================
+GATEWAY_IMAGE="nodesense-gateway:latest"
+GATEWAY_DIR="gateway"
+
+info "Building gateway image ($GATEWAY_IMAGE)..."
+docker build -t "$GATEWAY_IMAGE" "$GATEWAY_DIR" \
+  || fail "Failed to build gateway image"
+ok "Gateway image built."
+
 # =============== ASK FOR PASSWORDS & CLIENT SECRET =================
 echo ""
 echo "-------------------------------------------------------------"
