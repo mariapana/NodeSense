@@ -19,6 +19,8 @@ def collect_metrics():
     mem = psutil.virtual_memory()
 
     load_avg = psutil.getloadavg()[0]
+    disk = psutil.disk_usage('/')
+    net = psutil.net_io_counters()
 
     metrics = [
         {"name": "cpu_usage", "value": cpu, "unit": "%"},
@@ -41,6 +43,21 @@ def collect_metrics():
             "name": "process_count",
             "value": len(psutil.pids()),
             "unit": "count",
+        },
+        {
+            "name": "disk_percent",
+            "value": disk.percent,
+            "unit": "%",
+        },
+        {
+            "name": "net_bytes_sent",
+            "value": net.bytes_sent,
+            "unit": "bytes",
+        },
+        {
+            "name": "net_bytes_recv",
+            "value": net.bytes_recv,
+            "unit": "bytes",
         },
     ]
 
