@@ -104,6 +104,40 @@ services:
     deploy:
       mode: global
 
+  # -------------------------
+  # Prometheus
+  # -------------------------
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring_net
+    deploy:
+      replicas: 1
+
+  # -------------------------
+  # Grafana
+  # -------------------------
+  grafana:
+    image: grafana/grafana:10.4.1
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - monitoring_net
+      - backend_net
+    deploy:
+      replicas: 1
+
 # -------------------------
 # Networks
 # -------------------------
@@ -118,3 +152,5 @@ networks:
 volumes:
   pgdata:
   timescale_data:
+  prometheus_data:
+  grafana_data:
