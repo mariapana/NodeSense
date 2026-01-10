@@ -67,8 +67,22 @@ To deploy the NodeSense platform, follow these steps:
     ./deploy.sh
     ```
 3. **Access the Platform:**
-   TODO: Add instructions on how to access the platform (e.g., Grafana URL, Keycloak URL).
-4. **Clean Up:**
+   - **Frontend UI:** Open [http://127.0.0.1:3002](http://127.0.0.1:3002) in your browser.
+     - **Login:** Use `admin` / `admin` (or the credentials you set).
+     - **Dashboard:** View active nodes and real-time metrics.
+     - **System Topology:** (Admin only) View Docker Swarm services and logs.
+   - **Grafana:** Open [http://127.0.0.1:3001](http://127.0.0.1:3001)
+     - **Login:** `admin` / `admin`
+     - View dashboards in `Dashboards/NodeSense Metrics`.
+   - **Keycloak:** Open [http://127.0.0.1:8080](http://127.0.0.1:8080) for user management.
+
+4. **Verify Implementation:**
+    Run the comprehensive test suite to verify all features (Auth, Security, Alerting, Rate Limiting):
+    ```bash
+    ./test_suite.sh admin admin [client_secret]
+    ```
+
+5. **Clean Up:**
     ```bash
     ./cleanup.sh
     ```
@@ -107,3 +121,60 @@ NodeSense uses **TimescaleDB** to persist monitoring metrics in an optimized tim
 * The `metrics` table is defined as a **hypertable**, enabling efficient queries over time intervals.
 * Indexes are created for `(node_id, time DESC)` to optimize common access patterns.
 
+
+### API Gateway (High Availability & Security)
+
+The **API Gateway** acts as the central entry point for all incoming traffic, ensuring security, scalability, and control.
+
+**Implementation Details:**
+
+*   **Technology Stack:** Built with **FastAPI** (Python) for high performance and async capabilities.
+*   **Security:**
+    *   **JWT Validation:** Enforces authentication by validating JSON Web Tokens (JWT) issued by Keycloak.
+    *   **Role-Based Access Control (RBAC):** Restricts sensitive endpoints (e.g., `DELETE`, System Topology) to users with the `admin` role.
+*   **Rate Limiting:**
+    *   Implements a **Distributed Rate Limiting** algorithm using a **Redis Cluster** backend.
+    *   Limits traffic to **1000 requests per minute** per client IP to prevent abuse.
+*   **System Integration:**
+    *   Mounts the **Docker Socket** (`/var/run/docker.sock`) to query Swarm state (services, replicas).
+    *   Proxies metric ingestion requests to the **Collector** service via internal Docker DNS.
+
+### Metrics Collector (Data Aggregation)
+
+The **Collector** is responsible for high-throughput ingestion and persistence of monitoring data.
+
+**Implementation Details:**
+
+*   **High Performance:** Uses **FastAPI** and **asyncpg** (asynchronous PostgreSQL driver) to handle concurrent write operations efficiently.
+*   **Data Pipeline:**
+    1.  Validates incoming JSON payloads against a strict **Pydantic** schema.
+    2.  Updates real-time **Prometheus** gauges (`node_metric`, `node_last_seen`) for scraping.
+    3.  Persists normalized data into **TimescaleDB** using transactional writes.
+*   **Resiliency:** Designed to be stateless and horizontally scalable (replicated).
+
+### Alerting Service (Anomaly Detection)
+
+The **Alerting Service** continuously monitors the system for critical anomalies and ensures administrators are notified.
+
+**Implementation Details:**
+
+*   **Polling Engine:** A Python-based persistent service that queries **TimescaleDB** at fixed intervals (every 60s).
+*   **Detection Rules:**
+    *   **High CPU:** Triggers when CPU usage exceeds **90%**.
+    *   **Node Down:** Triggers when a node has not reported metrics for more than **2 minutes**.
+*   **Persistence:** Alerts are stored in a dedicated `alerts` table for auditing and UI retrieval.
+*   **Logging:** Outputs structured warning logs for integration with external log aggregators.
+
+### Frontend Application (Dashboard & Control)
+
+The **Frontend** provides a modern, responsive user interface for visualizing the platform's state.
+
+**Implementation Details:**
+
+*   **Tech Stack:** Built with **React**, **Vite**, and **TailwindCSS** for rapid development and optimized builds.
+*   **Features:**
+    *   **Real-Time Dashboard:** Displays a grid of active nodes with status indicators (Online/Offline) and last-seen timestamps.
+    *   **System Topology:** Visualizes Docker Swarm services, including replica counts and image versions (Admin only).
+    *   **Log Viewer:** Live access to service logs via the Gateway API.
+    *   **Live Simulator:** Integrated tool to spawn virtual nodes/metrics directly from the browser for testing.
+    *   **Alert Notifications:** Polling-based Toast notifications for immediate alert visibility.
