@@ -46,3 +46,26 @@ async def insert_metrics(conn, node_id: str, timestamp, metrics):
         """,
         rows,
     )
+
+async def get_all_nodes(conn):
+    rows = await conn.fetch("SELECT id, name, last_seen FROM nodes ORDER BY last_seen DESC")
+    return [{"id": r["id"], "name": r["name"], "last_seen": r["last_seen"]} for r in rows]
+
+
+async def delete_node(conn, node_id: str):
+    await conn.execute("DELETE FROM nodes WHERE id = $1", node_id)
+
+
+async def delete_all_nodes(conn):
+    await conn.execute("DELETE FROM nodes")
+
+async def init_alerts_table(conn):
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS alerts (
+            id SERIAL PRIMARY KEY,
+            node_id TEXT,
+            message TEXT,
+            timestamp TIMESTAMPTZ NOT NULL,
+            read BOOLEAN DEFAULT FALSE
+        );
+    """)

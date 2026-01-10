@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from models import IngestPayload
 import asyncio
-from db import get_pool, upsert_node, insert_metrics
+from db import get_pool, upsert_node, insert_metrics, get_all_nodes, delete_node, delete_all_nodes
 from prometheus_client import make_asgi_app, Gauge
 
 app = FastAPI()
@@ -14,9 +14,52 @@ NODE_METRIC = Gauge("node_metric", "Metric value from node", ["node_id", "name",
 NODE_LAST_SEEN = Gauge("node_last_seen", "Last seen timestamp of the node", ["node_id"])
 
 
+@app.on_event("startup")
+async def startup_event():
+    try:
+        from db import init_alerts_table
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await init_alerts_table(conn)
+    except Exception as e:
+        print(f"Startup DB init failed: {e}")
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/nodes")
+async def get_nodes():
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            nodes = await get_all_nodes(conn)
+        return nodes
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/nodes/{node_id}")
+async def delete_node_endpoint(node_id: str):
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await delete_node(conn, node_id)
+        return {"status": "deleted", "id": node_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/nodes")
+async def delete_all_nodes_endpoint():
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await delete_all_nodes(conn)
+        return {"status": "all deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/ingest")
@@ -42,5 +85,4 @@ async def ingest(payload: IngestPayload):
 
         return {"status": "ok"}
     except Exception as e:
-        print("Collector error:", e)
         raise HTTPException(status_code=500, detail=str(e))
