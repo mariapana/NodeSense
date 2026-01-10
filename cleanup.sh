@@ -21,7 +21,7 @@ err()  { echo -e "\e[31m[ERROR]\e[0m $1"; }
 fail() { err "$1"; exit 1; }
 
 STACK_NAME="monitor-platform"
-NETWORKS=("frontend_net" "backend_net" "monitoring_net")
+NETWORKS=("frontend_net" "backend_net" "monitoring_net" "keycloak_net")
 
 echo -n "Are you sure you want to remove EVERYTHING (stack, networks, volumes)? (y/N): "
 read -r CONFIRM
@@ -97,6 +97,27 @@ fi
 info "Leaving Docker Swarm..."
 docker swarm leave --force > /dev/null 2>&1 || info "Already left swarm."
 ok "Left Docker Swarm."
+
+# ================= CLEANUP TEMP FILES ==================
+if [ -f "token.txt" ]; then
+    info "Removing temporary token file..."
+    rm token.txt
+    ok "Removed token.txt"
+fi
+
+if [ -d "tests/__pycache__" ]; then
+    info "Removing test cache..."
+    rm -rf tests/__pycache__
+    ok "Removed tests/__pycache__"
+fi
+
+if [ -f "debug_token.py" ]; then
+    info "Removing debug token script..."
+    rm debug_token.py
+    ok "Removed debug_token.py"
+fi
+
+echo ""
 
 echo ""
 ok "FULL CLEANUP COMPLETE — STACK, NETWORKS, CONTAINERS & VOLUMES REMOVED!"

@@ -106,8 +106,8 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "node_metric{name=\"cpu_usage\"}",
-          "legendFormat": "Node {{node_id}}",
+          "expr": "node_metric{name=\"cpu_usage\", node_id=~\"$node\"}",
+          "legendFormat": "{{node_id}}",
           "range": true,
           "refId": "A"
         }
@@ -199,8 +199,8 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "node_metric{name=\"mem_used\"}",
-          "legendFormat": "Node {{node_id}}",
+          "expr": "node_metric{name=\"mem_used\", node_id=~\"$node\"}",
+          "legendFormat": "{{node_id}}",
           "range": true,
           "refId": "A"
         }
@@ -292,7 +292,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "node_metric{name=\"disk_percent\"}",
+          "expr": "node_metric{name=\"disk_percent\", node_id=~\"$node\"}",
           "legendFormat": "Disk Node {{node_id}}",
           "range": true,
           "refId": "A"
@@ -360,7 +360,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "node_metric{name=\"mem_used\"} / ignoring(name) node_metric{name=\"mem_total\"} * 100",
+          "expr": "node_metric{name=\"mem_used\", node_id=~\"$node\"} / ignoring(name) node_metric{name=\"mem_total\", node_id=~\"$node\"} * 100",
           "legendFormat": "Mem % - {{node_id}}",
           "range": true,
           "refId": "A"
@@ -449,7 +449,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(node_metric{name=\"net_bytes_recv\"}[1m])",
+          "expr": "rate(node_metric{name=\"net_bytes_recv\", node_id=~\"$node\"}[1m])",
           "legendFormat": "Inbound ({{node_id}})",
           "range": true,
           "refId": "A"
@@ -460,7 +460,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(node_metric{name=\"net_bytes_sent\"}[1m])",
+          "expr": "rate(node_metric{name=\"net_bytes_sent\", node_id=~\"$node\"}[1m])",
           "legendFormat": "Outbound ({{node_id}})",
           "range": true,
           "refId": "B"
@@ -526,7 +526,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "node_metric{name=\"process_count\"}",
+          "expr": "node_metric{name=\"process_count\", node_id=~\"$node\"}",
           "legendFormat": "{{node_id}}",
           "range": true,
           "refId": "A"
@@ -539,7 +539,38 @@
   "schemaVersion": 39,
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "Prometheus"
+        },
+        "definition": "label_values(node_metric, node_id)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "node",
+        "options": [],
+        "query": {
+          "query": "label_values(node_metric, node_id)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-15m",

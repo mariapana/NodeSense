@@ -97,7 +97,7 @@ services:
     image: nodesense-agent:latest
     environment:
       COLLECTOR_URL: http://collector:3000/ingest
-      NODE_ID: "{{.Node.ID}}"
+      NODE_ID: "infrastructure-monitor"
       INTERVAL: "5"
     networks:
       - monitoring_net
@@ -157,12 +157,53 @@ services:
     environment:
       REDIS_URL: redis://redis:6379
       COLLECTOR_URL: http://collector:3000
+      KEYCLOAK_URL: http://keycloak:8080
+      REALM: NodeSense
+      DB_HOST: timescaledb
+      DB_USER: nodesense
+      DB_PASS: nodesensepass
+      DB_NAME: nodesense
     networks:
+      - backend_net
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # -------------------------
+  # Alerting Service
+  # -------------------------
+  alerting:
+    build: ./alerting
+    image: nodesense-alerting:latest
+    environment:
+      DB_HOST: timescaledb
+      DB_USER: nodesense
+      DB_PASS: nodesensepass
+      DB_NAME: nodesense
+      CHECK_INTERVAL: "10"
+    networks:
+      - monitoring_net
       - backend_net
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
+
+  # -------------------------
+  # Frontend UI
+  # -------------------------
+  frontend:
+    build: ./frontend
+    image: nodesense-frontend:latest
+    ports:
+      - "3002:3000"
+    deploy:
+      replicas: 1
+    networks:
+      - backend_net
 
 # -------------------------
 # Networks

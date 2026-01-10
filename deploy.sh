@@ -94,6 +94,24 @@ docker build -t "$GATEWAY_IMAGE" "$GATEWAY_DIR" \
   || fail "Failed to build gateway image"
 ok "Gateway image built."
 
+# =============== BUILD ALERTING IMAGE =================
+ALERTING_IMAGE="nodesense-alerting:latest"
+ALERTING_DIR="alerting"
+
+info "Building alerting image ($ALERTING_IMAGE)..."
+docker build -t "$ALERTING_IMAGE" "$ALERTING_DIR" \
+  || fail "Failed to build alerting image"
+ok "Alerting image built."
+
+# =============== BUILD FRONTEND IMAGE =================
+FRONTEND_IMAGE="nodesense-frontend:latest"
+FRONTEND_DIR="frontend"
+
+info "Building frontend image ($FRONTEND_IMAGE)..."
+docker build -t "$FRONTEND_IMAGE" "$FRONTEND_DIR" \
+  || fail "Failed to build frontend image"
+ok "Frontend image built."
+
 # =============== ASK FOR PASSWORDS & CLIENT SECRET =================
 echo ""
 echo "-------------------------------------------------------------"
