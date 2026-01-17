@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from models import IngestPayload
 import asyncio
-from db import get_pool, upsert_node, insert_metrics, get_all_nodes, delete_node, delete_all_nodes
+from db import get_pool, upsert_node, insert_metrics, get_all_nodes, delete_node, delete_all_nodes, trigger_db_error
 from prometheus_client import make_asgi_app, Gauge
 
 app = FastAPI()
@@ -45,8 +45,14 @@ async def delete_node_endpoint(node_id: str):
     try:
         pool = await get_pool()
         async with pool.acquire() as conn:
-            await delete_node(conn, node_id)
+            deleted_count = await delete_node(conn, node_id)
+        
+        if deleted_count == 0:
+            raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+
         return {"status": "deleted", "id": node_id}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -59,6 +65,18 @@ async def delete_all_nodes_endpoint():
             await delete_all_nodes(conn)
         return {"status": "all deleted"}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/debug/db-error")
+async def debug_db_error():
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await trigger_db_error(conn)
+        return {"status": "ok"}
+    except Exception as e:
+        # We want to return 500 but with the specific error message to prove it happened
         raise HTTPException(status_code=500, detail=str(e))
 
 

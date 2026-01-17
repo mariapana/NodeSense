@@ -53,7 +53,13 @@ async def get_all_nodes(conn):
 
 
 async def delete_node(conn, node_id: str):
-    await conn.execute("DELETE FROM nodes WHERE id = $1", node_id)
+    result = await conn.execute("DELETE FROM nodes WHERE id = $1", node_id)
+    # result is string like "DELETE 1"
+    try:
+        count = int(result.split(" ")[1])
+        return count
+    except:
+        return 0
 
 
 async def delete_all_nodes(conn):
@@ -69,3 +75,10 @@ async def init_alerts_table(conn):
             read BOOLEAN DEFAULT FALSE
         );
     """)
+
+async def trigger_db_error(conn):
+    # Try to insert a duplicate node without ON CONFLICT to raise UniqueViolationError
+    # First ensure it exists
+    await conn.execute("INSERT INTO nodes (id, name) VALUES ('dupe-test', 'dupe-test') ON CONFLICT (id) DO NOTHING")
+    # Now try to insert again 
+    await conn.execute("INSERT INTO nodes (id, name) VALUES ('dupe-test', 'dupe-test')")

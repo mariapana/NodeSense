@@ -34,7 +34,7 @@ app.add_middleware(
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
 COLLECTOR_URL = os.getenv("COLLECTOR_URL", "http://collector:3000")
 RATE_LIMIT_WINDOW = 60  # seconds
-RATE_LIMIT_MAX_REQUESTS = 1000  # requests per window
+RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT", "1000"))  # requests per window
 
 # Redis Connection
 r = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
@@ -58,6 +58,12 @@ async def check_rate_limit(client_id: str):
 print("DEBUG: App Module Loaded")
 
 @app.middleware("http")
+async def add_server_header(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Served-By"] = os.getenv("HOSTNAME", "unknown")
+    return response
+
+@app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     client_ip = request.client.host
     if "x-forwarded-for" in request.headers:
@@ -71,7 +77,16 @@ async def rate_limit_middleware(request: Request, call_next):
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "service": "gateway"}
+    return {"status": "ok", "service": "gateway", "host": os.getenv("HOSTNAME", "unknown")}
+
+@app.post("/api/debug/db-error")
+async def debug_db_error_proxy(user=Security(verify_token)):
+    # Proxy to collector debug endpoint
+    try:
+        rp_resp = await client.post("/debug/db-error")
+        return Response(content=rp_resp.content, status_code=rp_resp.status_code)
+    except httpx.ConnectError:
+         raise HTTPException(status_code=503, detail="Collector service unavailable")
 
 @app.get("/ping")
 async def ping():

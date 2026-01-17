@@ -163,6 +163,7 @@ services:
       DB_USER: nodesense
       DB_PASS: nodesensepass
       DB_NAME: nodesense
+      RATE_LIMIT: "100"
     networks:
       - backend_net
     deploy:

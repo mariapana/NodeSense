@@ -187,14 +187,18 @@ except Exception as e:
     print(str(e))
 "
 docker exec "$CONTAINER_ID" python -c "$PY_ALERT"
-log_info "Metric sent. Waiting 12s for alert check (Interval=10s)..."
-sleep 12
-LOGS=$(docker service logs --tail 50 monitor-platform_alerting 2>&1)
-if echo "$LOGS" | grep -q "ALERT: High CPU"; then
-    log_pass "Alert triggered found in logs:"
-    echo "$LOGS" | grep "ALERT: High CPU" | tail -n 1
+log_info "Metric sent. Waiting 30s for alert check (Interval=10s)..."
+sleep 30
+# Check DB for alert
+docker exec $DB_CONTAINER psql -U nodesense -d nodesense -c "SELECT * FROM alerts WHERE message LIKE '%High CPU%';" > /tmp/alert_check.txt
+if grep -q "High CPU" /tmp/alert_check.txt; then
+    log_pass "Alert triggered found in DB:"
+    # Only show the relevant lines to avoid flooding
+    grep "High CPU" /tmp/alert_check.txt | tail -n 5
 else
-    log_fail "Alert log not found."
+    log_fail "Alert not found in DB."
+    log_info "Checking logs as backup..."
+    docker service logs --tail 20 monitor-platform_alerting
 fi
 
 # ---------------------------------------------------------
@@ -209,23 +213,25 @@ docker exec $DB_CONTAINER psql -U nodesense -d nodesense -c "INSERT INTO nodes (
 log_cmd "docker exec $DB_CONTAINER psql ... SELECT id, last_seen FROM nodes WHERE id='dead-node-1'"
 docker exec $DB_CONTAINER psql -U nodesense -d nodesense -c "SELECT id, last_seen FROM nodes WHERE id='dead-node-1';"
 
-log_info "Waiting 12s for alert check..."
-sleep 12
-log_cmd "docker service logs monitor-platform_alerting"
-LOGS=$(docker service logs --tail 50 monitor-platform_alerting 2>&1)
-if echo "$LOGS" | grep -q "Node Down detected"; then
-    log_pass "Node Down alert found in logs:"
-    echo "$LOGS" | grep "Node Down detected" | tail -n 1
+log_info "Waiting 15s for alert check..."
+sleep 15
+# Check DB
+docker exec $DB_CONTAINER psql -U nodesense -d nodesense -c "SELECT * FROM alerts WHERE message LIKE '%Node Down%';" > /tmp/node_down_check.txt
+if grep -q "dead-node-1" /tmp/node_down_check.txt; then
+    log_pass "Node Down alert found in DB for 'dead-node-1':"
+    grep "dead-node-1" /tmp/node_down_check.txt | head -n 1
 else
-    log_fail "Node Down alert NOT found. Is the alerting code updated?"
+    log_fail "Node Down alert for 'dead-node-1' NOT found in DB."
+    log_info "Recent alerts (tail 5):"
+    docker exec $DB_CONTAINER psql -U nodesense -d nodesense -c "SELECT * FROM alerts ORDER BY timestamp DESC LIMIT 5;"
 fi
 
 # ---------------------------------------------------------
 
 section "PHASE 6: Rate Limiting"
-log_info "Description: Verify that sending >1000 requests/min to the Gateway triggers a 429 response."
-log_info "Testing Rate Limit (Max 1000/min)..."
-log_info "Sending 1100 requests rapidly..."
+log_info "Description: Verify that sending >100 requests/min to the Gateway triggers a 429 response."
+log_info "Testing Rate Limit (Max 100/min)..."
+log_info "Sending 150 requests rapidly..."
 log_cmd "docker exec $CONTAINER_ID python -c \"...loop sending requests...\""
 
 PY_RATELIMIT="
@@ -236,7 +242,7 @@ headers = {'Authorization': 'Bearer ${TOKEN}', 'Content-Type': 'application/json
 data = {'node_id': 'spam-node', 'timestamp': '2026-01-10T17:00:00Z', 'metrics': [{'name': 'cpu', 'value': 1}]}
 limited = False
 count = 0
-for i in range(1100):
+for i in range(150):
     try:
         resp = requests.post(url, headers=headers, json=data, timeout=2)
         if resp.status_code == 429:
@@ -292,6 +298,25 @@ else
     log_fail "Load Test Failed."
 fi
 
+
+# ---------------------------------------------------------
+
+section "PHASE 9: Presentation Scenarios Validation"
+log_info "Description: Verify Replication, Error Handling, Security, and DB Consistency."
+log_info "Waiting 65s for Rate Limit window to reset after Load Test..."
+sleep 65
+
+# Copy validation script to container
+log_cmd "docker cp tests/validate_presentation.py $CONTAINER_ID:/tmp/validate_presentation.py"
+docker cp tests/validate_presentation.py $CONTAINER_ID:/tmp/validate_presentation.py
+
+log_cmd "docker exec $CONTAINER_ID python /tmp/validate_presentation.py \"$TOKEN\""
+docker exec $CONTAINER_ID python /tmp/validate_presentation.py "$TOKEN"
+if [ $? -eq 0 ]; then
+    log_pass "Presentation Scenarios Passed."
+else
+    log_fail "Presentation Scenarios Failed."
+fi
 
 # ================= MANUAL GUIDE =================
 
